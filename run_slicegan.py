@@ -12,11 +12,11 @@ Project_name = 'NMC'
 # Specify project folder.
 Project_dir = 'Trained_Generators'
 # Run with False to show an image during or after training
-parser = argparse.ArgumentParser()
-parser.add_argument('training', type=int)
-args = parser.parse_args()
-Training = args.training
-# Training = 0
+# parser = argparse.ArgumentParser()
+# parser.add_argument('training', type=int)
+# args = parser.parse_args()
+# Training = args.training
+Training = 1
 
 Project_path = util.mkdr(Project_name, Project_dir, Training)
 
