@@ -16,7 +16,7 @@ Project_dir = 'Trained_Generators'
 # parser.add_argument('training', type=int)
 # args = parser.parse_args()
 # Training = args.training
-Training = 1
+Training = 0
 
 Project_path = util.mkdr(Project_name, Project_dir, Training)
 
