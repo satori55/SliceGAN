@@ -136,15 +136,17 @@ def test_plotter(img,slcs,imtype,pth):
     if imtype == 'colour':
         for j in range(slcs):
             axs[j, 0].imshow(img[j, :, :, :], vmin = 0, vmax = 255)
-            axs[j, 1].imshow(img[:, j, :, :],  vmin = 0, vmax = 255)
-            axs[j, 2].imshow(img[:, :, j, :],  vmin = 0, vmax = 255)
+            axs[j, 1].imshow(img[:, j, :, :], vmin = 0, vmax = 255)
+            axs[j, 2].imshow(img[:, :, j, :], vmin = 0, vmax = 255)
     elif imtype == 'grayscale':
+        # print(img.shape)
         for j in range(slcs):
             axs[j, 0].imshow(img[j, :, :], cmap = 'gray')
             axs[j, 1].imshow(img[:, j, :], cmap = 'gray')
             axs[j, 2].imshow(img[:, :, j], cmap = 'gray')
     else:
         for j in range(slcs):
+            # print(img.shape)
             axs[j, 0].imshow(img[j, :, :])
             axs[j, 1].imshow(img[:, j, :])
             axs[j, 2].imshow(img[:, :, j])

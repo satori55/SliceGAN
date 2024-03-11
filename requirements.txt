@@ -1,0 +1,6 @@
+colorcet==3.1.0
+matplotlib==3.8.2
+numpy==1.24.1
+plotoptix==0.18.1
+tifffile==2023.12.9
+torch==2.1.2+cu118

@@ -166,6 +166,7 @@ def train(pth, imtype, datatype, real_data, Disc, Gen, nc, l, nz, sf):
                     torch.save(netD.state_dict(), pth + "_Disc.pt")
                     noise = torch.randn(1, nz, lz, lz, lz, device=device)
                     img = netG(noise)
+                    # print(img.shape)
                     ###Print progress
                     ## calc ETA
                     steps = len(dataloaderx)

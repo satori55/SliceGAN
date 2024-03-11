@@ -8,7 +8,7 @@ to generate a synthetic image using a trained generator.
 from slicegan import model, networks, util
 import argparse
 # Define project name
-Project_name = 'NMC'
+Project_name = '3phase'
 # Specify project folder.
 Project_dir = 'Trained_Generators'
 # Run with False to show an image during or after training
@@ -16,7 +16,7 @@ Project_dir = 'Trained_Generators'
 # parser.add_argument('training', type=int)
 # args = parser.parse_args()
 # Training = args.training
-Training = 0
+Training = 1
 
 Project_path = util.mkdr(Project_name, Project_dir, Training)
 
@@ -28,9 +28,10 @@ image_type = 'nphase'
 img_channels = 3
 # define data type (for colour/grayscale images, must be 'colour' / '
 # greyscale. nphase can be, 'tif2D', 'png', 'jpg', tif3D, 'array')
-data_type = 'tif3D'
+data_type = 'tif2D'
 # Path to your data. One string for isotrpic, 3 for anisotropic
-data_path = ['Examples/NMC.tif']
+data_path = ['stacked_3d_image_xy_3p.tif']
+# data_path = ['Examples/NMC.tif']
 
 ## Network Architectures
 # Training image size, no. channels and scale factor vs raw data
