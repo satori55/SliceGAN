@@ -109,7 +109,7 @@ def slicegan_rc_nets(pth, Training, imtype, dk, ds, df, dp, gk, gs, gf, gp):
                 )
                 * 2,
                 int(
-                    x.shape[3] - 1,
+                    x.shape[4] - 1,
                 )
                 * 2,
             )

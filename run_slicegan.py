@@ -9,7 +9,7 @@ from slicegan import model, networks, util
 import argparse
 
 # Define project name
-Project_name = "3phase"
+Project_name = "NMC"
 # Specify project folder.
 Project_dir = "Trained_Generators"
 # Run with False to show an image during or after training
@@ -17,7 +17,7 @@ Project_dir = "Trained_Generators"
 # parser.add_argument('training', type=int)
 # args = parser.parse_args()
 # Training = args.training
-Training = 1
+Training = 0
 
 Project_path = util.mkdr(Project_name, Project_dir, Training)
 

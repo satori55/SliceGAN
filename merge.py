@@ -39,7 +39,7 @@ print(sort_slices)
 # 读取所有切片并存储在一个列表中
 images: list = [tifffile.imread("data/" + slice_file) for slice_file in sort_slices]
 
-image_crop:list = [element[107:363, 191:447, 1] for element in images]
+image_crop: list = [element[107:363, 191:447, 1] for element in images]
 
 # 将列表中的图像堆叠成一个3D数组
 image_stack: np.ndarray = np.stack(image_crop, axis=0)
