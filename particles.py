@@ -1,11 +1,12 @@
 import cv2
+from matplotlib.pylab import f
 import matplotlib.pyplot as plt
 import numpy as np
 import tifffile as tiff
 from skimage.measure import label, regionprops
 
 
-image = tiff.imread('stacked_binary_images.tif')
+image = tiff.imread('2phase.tif')
 
 # step2: label particles
 labeled_image, num_features = label(image, return_num=True)
@@ -25,13 +26,16 @@ for prop in properties:
 # mean and std
 average_radius = float(np.mean(radii))
 std_dev_radius = float(np.std(radii))
-
+print(radii)
 # plot
 plt.figure(figsize=(10, 6))
 plt.hist(radii, bins=30, color='skyblue', edgecolor='black')
-plt.title('Particle Radius Distribution')
-plt.xlabel('Radius')
-plt.ylabel('Frequency')
+plt.title('Particle Radius Distribution', fontsize=24)
+plt.xlabel('Radius', fontsize=20)
+plt.ylabel('Frequency', fontsize=20)
+plt.xticks(fontsize=15)
+plt.yticks(fontsize=15)
+plt.xlim(0, 15)
 plt.grid(True)
 
 # mean std
