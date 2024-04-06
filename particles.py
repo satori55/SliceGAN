@@ -4,32 +4,41 @@ import matplotlib.pyplot as plt
 import numpy as np
 import tifffile as tiff
 from skimage.measure import label, regionprops
+from scipy.stats import wasserstein_distance
 
 
-image = tiff.imread('2phase.tif')
-
-# step2: label particles
-labeled_image, num_features = label(image, return_num=True)
-
-# step3: properties analysis
-properties = regionprops(labeled_image)
+images = tiff.imread('2phase_2slice_pred1.tif')
 
 # equivalent radius
 radii = []
 
-for prop in properties:
-    # equivalent radius
-    volume = prop.area  # volume
-    radius = ((3 * volume) / (4 * np.pi)) ** (1/3)
-    radii.append(radius)
+for i in range(images.shape[0]):
+    # step2: label particles
+    labeled_image, num_features = label(images[i], return_num=True)
+
+    # step3: properties analysis
+    properties = regionprops(labeled_image)
+
+    for prop in properties:
+        # equivalent radius
+        s = prop.area  # volume
+        radius = (s / np.pi) ** (1/2)
+        radii.append(radius)
 
 # mean and std
 average_radius = float(np.mean(radii))
 std_dev_radius = float(np.std(radii))
-print(radii)
+# print(radii)
+bins = np.arange(0, 15.2, 0.2)
+hist, bin_edges = np.histogram(radii, bins=bins)
+
+# 打印每个分组的边界和计数
+for i in range(len(hist)):
+    print(f"分组 {i+1}: 边界 = ({bin_edges[i]}, {bin_edges[i+1]}), 计数 = {hist[i]}")
+
 # plot
 plt.figure(figsize=(10, 6))
-plt.hist(radii, bins=30, color='skyblue', edgecolor='black')
+plt.hist(radii, bins=list(bins), color='skyblue', edgecolor='black')
 plt.title('Particle Radius Distribution', fontsize=24)
 plt.xlabel('Radius', fontsize=20)
 plt.ylabel('Frequency', fontsize=20)
@@ -48,3 +57,31 @@ plt.show()
 
 print(average_radius)
 print(std_dev_radius)
+
+images = tiff.imread('stacked_binary_images.tif')
+
+# equivalent radius
+radii2 = []
+
+for i in range(images.shape[0]):
+    # step2: label particles
+    labeled_image, num_features = label(images[i], return_num=True)
+
+    # step3: properties analysis
+    properties = regionprops(labeled_image)
+
+    for prop in properties:
+        # equivalent radius
+        s = prop.area  # volume
+        radius = (s / np.pi) ** (1/2)
+        radii2.append(radius)
+
+# mean and std
+average_radius2 = float(np.mean(radii))
+std_dev_radius2 = float(np.std(radii))
+# print(radii)
+bins = np.arange(0, 15.2, 0.2)
+hist2, bin_edges2 = np.histogram(radii2, bins=bins)
+
+EMD = wasserstein_distance(hist, hist2)
+print(EMD)
