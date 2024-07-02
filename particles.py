@@ -5,10 +5,9 @@ import numpy as np
 import tifffile as tiff
 from skimage.measure import label, regionprops
 from scipy.stats import wasserstein_distance
-from scipy.stats import pearsonr
 
 
-images = tiff.imread('5slices_RMS_3.tif')
+images = tiff.imread('2phase_2slice_pred1.tif')
 
 # equivalent radius
 radii = []
@@ -30,12 +29,12 @@ for i in range(images.shape[0]):
 average_radius = float(np.mean(radii))
 std_dev_radius = float(np.std(radii))
 # print(radii)
-bins = np.arange(0, 40.2, 0.2)
+bins = np.arange(0, 15.2, 0.2)
 hist, bin_edges = np.histogram(radii, bins=bins)
 
 # 打印每个分组的边界和计数
-# for i in range(len(hist)):
-#     print(f"分组 {i+1}: 边界 = ({bin_edges[i]}, {bin_edges[i+1]}), 计数 = {hist[i]}")
+for i in range(len(hist)):
+    print(f"分组 {i+1}: 边界 = ({bin_edges[i]}, {bin_edges[i+1]}), 计数 = {hist[i]}")
 
 # plot
 plt.figure(figsize=(10, 6))
@@ -45,7 +44,7 @@ plt.xlabel('Radius', fontsize=20)
 plt.ylabel('Frequency', fontsize=20)
 plt.xticks(fontsize=15)
 plt.yticks(fontsize=15)
-plt.xlim(0, 40)
+plt.xlim(0, 15)
 plt.grid(True)
 
 # mean std
@@ -59,11 +58,10 @@ plt.show()
 print(average_radius)
 print(std_dev_radius)
 
-images = tiff.imread('5slices_RMS_1.tif')
+images = tiff.imread('stacked_binary_images.tif')
 
 # equivalent radius
 radii2 = []
-porosity = []
 
 for i in range(images.shape[0]):
     # step2: label particles
@@ -71,7 +69,6 @@ for i in range(images.shape[0]):
 
     # step3: properties analysis
     properties = regionprops(labeled_image)
-    porosity.append(np.sum(images[i] == 255) / (images[i].shape[0] * images[i].shape[1]))
 
     for prop in properties:
         # equivalent radius
@@ -82,13 +79,9 @@ for i in range(images.shape[0]):
 # mean and std
 average_radius2 = float(np.mean(radii))
 std_dev_radius2 = float(np.std(radii))
-porosity_avg = np.mean(porosity)
 # print(radii)
-# bins = np.arange(0, 15.2, 0.2)
+bins = np.arange(0, 15.2, 0.2)
 hist2, bin_edges2 = np.histogram(radii2, bins=bins)
 
-similarity, _ = pearsonr(hist, hist2)
 EMD = wasserstein_distance(hist, hist2)
 print(EMD)
-print(f"porosity: {porosity_avg}")
-print(f"Similarity: {similarity}")
