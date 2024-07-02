@@ -6,3 +6,6 @@ data/
 *sample*/
 *SEM*/
 *.tif
+ctdata/
+*.zip
+*.7z

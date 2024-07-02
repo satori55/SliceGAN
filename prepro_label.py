@@ -72,7 +72,6 @@ def crop_image(
         horizontal_offset (int, optional): the horizontal offset of the cropped image. Defaults to 0.
     """
 
-    # 获取图像的尺寸
     h, w = image.shape
     # print(h, w)
 
@@ -112,23 +111,22 @@ def kmeans_segmentation_gray(
 
     image = cv2.GaussianBlur(image, (5, 5), 0)
 
-    # 将图像转换为二维数组
+    # reshape
     image_2d = image.reshape(h * w, 1)
-    # 将像素值转换为浮点数
+
     image_2d = image_2d.astype(np.float32)
 
-    # 定义KMeans的停止条件和次数
+    # Kmeans parameters
     criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 100, 0.2)
 
-    # 应用KMeans算法
     _, labels, centers = cv2.kmeans(
         image_2d * 50000, k, None, criteria, 10, cv2.KMEANS_RANDOM_CENTERS
     )
     
-    # 将labels中的标签替换为centers中的中心值
+    # convert label value to center value
     segmented_image = centers[labels.flatten()].reshape(image.shape)
 
-    # 将图像重新转换为原始的形状
+    # recover the shape
     segmented_image = segmented_image.reshape(h, w)
     cluster = np.unique(segmented_image)
     print(cluster)
@@ -136,19 +134,19 @@ def kmeans_segmentation_gray(
     extracted_label, plot_figure = plot_label
     binary_img = (segmented_image == (cluster[extracted_label])).astype(np.uint8)
 
-    # 计算连通区域
+    # calculate the connected area
     num_labels, labels_im = cv2.connectedComponents(binary_img)
     labels_im_copy = labels_im.copy()
     # print(np.unique(labels_im))
 
-    # 除去较小的连通区域
+    # remove small connected area
     if connect_size_1 is not None:
         for i in range(1, num_labels):
             if np.sum(labels_im == i) < connect_size_1:
                 binary_img[labels_im == i] = 0
                 labels_im_copy[labels_im == i] = 0
 
-    # 对图像进行开运算
+    # open and close operation
     if kernel_1 is not None:
         binary_img = cv2.morphologyEx(binary_img, cv2.MORPH_OPEN, kernel_1)
 
@@ -158,7 +156,7 @@ def kmeans_segmentation_gray(
     num_labels, labels_im = cv2.connectedComponents(binary_img.astype(np.uint8))
     labels_im_copy = labels_im.copy()
 
-    # 除去较小的连通区域
+    # twice remove small connected area
     if connect_size_2 is not None:
         for i in range(1, num_labels):
             if np.sum(labels_im == i) < connect_size_2:
@@ -169,7 +167,7 @@ def kmeans_segmentation_gray(
     # print(np.unique(labels_im_copy))
         tiff.imwrite(save_path, binary_img * 255)
     
-    # 显示原始图像和分割后的图像
+    # visualize the result
     if plot_figure:
         plt.figure(figsize=(12, 6))
         plt.subplot(2, 2, 1)
@@ -192,7 +190,7 @@ def kmeans_segmentation_gray(
         plt.show()
 
 
-# 示例使用
+# package the preprocess class
 class preprocess(object):
     def __init__(self, root: str, crop_save_path: str, seg_save_path: str):
         """
@@ -240,7 +238,7 @@ class preprocess(object):
             # break
 
 
-# 实例化类
+# realize the preprocess
 if __name__ == "__main__":
     dataset_idx = 3
     
@@ -257,6 +255,7 @@ if __name__ == "__main__":
         crop_save_path=f"D:/SliceGAN/ctdata/crop/{dataset_idx}",
         seg_save_path=f"D:/SliceGAN/ctdata/segment/{dataset_idx}",
     )
+    
     # dataset.crop(width=320, vertical_offset=-20, horizontal_offset=0)
     dataset.segment(
         k=2, # for data1 and data3, the k cluster is 2, for data2, the k cluster is 3
