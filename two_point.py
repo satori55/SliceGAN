@@ -45,11 +45,11 @@ def two_point_correlation(image, step_size=1, max_distance=None):
 # Example usage:
 if __name__ == "__main__":
     # Create a random binary image
-    np.random.seed(0)
+    # np.random.seed(0)
     # image = np.random.choice([0, 1], size=(100, 100), p=[0.7, 0.3])
-    image = tiff.imread('2phase.tif')
-    image = image[..., 1] / 255
-    # print(image)
+    image = tiff.imread('2_stack_20_scale2_192_2.tif')
+    image = image[150, ...] / 255
+    print(image.shape)
     distances, correlation = two_point_correlation(image, max_distance=10)
 
     # Plot the two-point correlation function

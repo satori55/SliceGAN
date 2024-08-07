@@ -7,6 +7,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from sympy import plot_implicit
 import tifffile as tiff
+from scipy import ndimage
 
 
 def normalize(img) -> np.ndarray:
@@ -129,7 +130,7 @@ def kmeans_segmentation_gray(
     # recover the shape
     segmented_image = segmented_image.reshape(h, w)
     cluster = np.unique(segmented_image)
-    print(cluster)
+    # print(cluster)
 
     extracted_label, plot_figure = plot_label
     binary_img = (segmented_image == (cluster[extracted_label])).astype(np.uint8)
@@ -162,6 +163,9 @@ def kmeans_segmentation_gray(
             if np.sum(labels_im == i) < connect_size_2:
                 binary_img[labels_im == i] = 0
                 labels_im_copy[labels_im == i] = 0
+
+    # fill the holesl (when fast scanning)
+    # binary_img = ndimage.binary_fill_holes(binary_img, structure=np.ones((5, 5))).astype(np.uint8)
 
     if save_path is not None:
     # print(np.unique(labels_im_copy))
@@ -204,7 +208,18 @@ class preprocess(object):
         self.img_name, self.img_list = eachTif(self.root)
         self.crop_save_path = crop_save_path
         self.seg_save_path = seg_save_path
-
+        
+        # additional data only
+        filter_img_name = []
+        filter_img_list = []
+        for idx, name in enumerate(self.img_name):
+            if name.endswith("50.tiff") is True:
+                filter_img_name.append(name)
+                filter_img_list.append(self.img_list[idx])
+                
+        self.img_name = filter_img_name
+        self.img_list = filter_img_list
+                
     def crop(self, width=320, vertical_offset=-20, horizontal_offset=0):
         for name, img in zip(self.img_name, self.img_list):
             crop_image(
@@ -240,7 +255,7 @@ class preprocess(object):
 
 # realize the preprocess
 if __name__ == "__main__":
-    dataset_idx = 3
+    dataset_idx = 2
     
     connect_size_1 = 200
     connect_size_2 = 300
@@ -248,7 +263,7 @@ if __name__ == "__main__":
     kernel_2 = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))  # binary image close
     
     # (extracted_label: choose the label to plot, plot_figure: show the figure or not)
-    plot_label = (1,True)
+    plot_label = (1, False)
 
     dataset = preprocess(
         root=f"D:/SliceGAN/ctdata/raw/{dataset_idx}",
@@ -258,7 +273,7 @@ if __name__ == "__main__":
     
     # dataset.crop(width=320, vertical_offset=-20, horizontal_offset=0)
     dataset.segment(
-        k=2, # for data1 and data3, the k cluster is 2, for data2, the k cluster is 3
+        k=3, # for data1 and data3, the k cluster is 2, for data2, the k cluster is 3
         connect_size_1=connect_size_1,
         connect_size_2=connect_size_2,
         kernel_1=kernel_1,

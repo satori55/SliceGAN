@@ -3,15 +3,27 @@ from mayavi import mlab
 import numpy as np
 
 # 读取图像
-image = tiff.imread('2phase.tif')
-data = image[:50, :50, :50]
+image = tiff.imread(r"D:\neoslicegan\2phase_2.tif")
+data = image[:150, :150, :150]
+print()
+data[data == 255] = 250
+# data[data == 0] = 180
+# data[data == 127] = 0
 
-# 创建Mayavi中的标量场
-src = mlab.pipeline.scalar_field(data)
+mlab.figure(bgcolor=(1, 1, 1))
+mlab.contour3d(data, contours=[200], opacity=0.3)
 
-# 为两个不同的值创建等值面，分别设置不同的颜色
-mlab.pipeline.iso_surface(src, contours=[1], color=(1, 0, 0), opacity=0.15)  # 红色
-mlab.pipeline.iso_surface(src, contours=[0], color=(0, 1, 0), opacity=0.15)  # 绿色
+@mlab.animate(delay=50)
+def animate():
+    for i in range(360):
+        mlab.view(azimuth=i, elevation=60, distance=500)
+        yield
+
+# 启动动画
+animate()
+
+# 保存动画为视频文件
+# mlab.movie('animation.mp4')
 
 # 显示图像
 mlab.show()
