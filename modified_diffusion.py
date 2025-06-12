@@ -2,7 +2,7 @@ import os
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from diffusers import UNet2DModel, DDPMScheduler
+from diffusers import UNet3DConditionModel, DDPMScheduler
 from matplotlib import pyplot as plt
 import torch.nn.functional as F
 from diffusers.optimization import get_cosine_schedule_with_warmup
@@ -39,6 +39,7 @@ print(len(train_data))
 
 # list to array
 train_data = np.array(train_data)
+print(train_data.shape)
 
 # tiff.imshow(train_data[0])
 
@@ -49,7 +50,13 @@ train_data = torch.tensor(train_data, dtype=torch.float32)
 train_data = train_data / 255.0
 
 # 调整张量的维度顺序，使其符合模型的输入格式 (N, C, H, W)
-train_data = train_data.permute(0, 3, 1, 2)
+train_data = train_data.permute(3, 0, 1, 2)
+print(train_data.shape)
+
+data =  train_data[:, :32, :32, :32]
+# add batch dimension
+data = data.unsqueeze(0)
+print(data.shape)
 
 # 创建 TensorDataset
 train_loader = torch.utils.data.DataLoader(
@@ -58,29 +65,40 @@ train_loader = torch.utils.data.DataLoader(
 
 
 # model
-model = UNet2DModel(
-    sample_size=(64, 64),  # the target image resolution
+model = UNet3DConditionModel(
+    sample_size=32,  # the target image resolution
     in_channels=3,  # the number of input channels, 3 for RGB images
     out_channels=3,  # the number of output channels
-    layers_per_block=2,  # how many ResNet layers to use per UNet block
-    block_out_channels=(128, 128, 256, 256, 512, 512),  # the number of output channels for each UNet block
     down_block_types=(
-        "DownBlock2D",  # a regular ResNet downsampling block
-        "DownBlock2D",
-        "DownBlock2D",
-        "DownBlock2D",
-        "AttnDownBlock2D",  # a ResNet downsampling block with spatial self-attention
-        "DownBlock2D",
+        "CrossAttnDownBlock3D",  # a regular ResNet downsampling block
+        "CrossAttnDownBlock3D",
+        "CrossAttnDownBlock3D",
+        "DownBlock3D",  # a ResNet downsampling block with spatial self-attention,
     ),
     up_block_types=(
-        "UpBlock2D",  # a regular ResNet upsampling block
-        "AttnUpBlock2D",  # a ResNet upsampling block with spatial self-attention
-        "UpBlock2D",
-        "UpBlock2D",
-        "UpBlock2D",
-        "UpBlock2D",
+        "UpBlock3D",  # a regular ResNet upsampling block
+        "CrossAttnUpBlock3D",  # a ResNet upsampling block with spatial self-attention
+        "CrossAttnUpBlock3D",
+        "CrossAttnUpBlock3D",
     ),
+    block_out_channels=(32, 64, 128, 128),
+    # num_attention_heads=4,
+    attention_head_dim=32,
+    cross_attention_dim=32,
 )
+
+batch_size = data.shape[0]
+sequence_length = 32  # 根据任务或模型调整
+hidden_size = 32      # 模型配置的特征维度
+
+encoder_hidden_states = torch.randn(batch_size, sequence_length, hidden_size).to(torch.device("cuda"))
+
+
+model.train()
+model.to(torch.device("cuda"))
+out = model(data.to(torch.device("cuda")), 100, encoder_hidden_states)
+print(f"{out.sample.shape=}")
+
 
 # create a scheduler
 noise_scheduler = DDPMScheduler(num_train_timesteps=500)
@@ -223,5 +241,3 @@ for epoch in range(number_of_epochs):
 
             plt.savefig(f"./resultsave/denoised_image_{epoch}.png")
             plt.close()
-
-

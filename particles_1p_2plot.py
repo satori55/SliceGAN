@@ -1,4 +1,4 @@
-from calendar import c
+from tkinter import font
 import cv2
 from matplotlib.pylab import f
 import matplotlib.pyplot as plt
@@ -12,6 +12,7 @@ from torch import le
 import pandas as pd
 from plotnine import ggplot, aes, geom_segment, geom_point, theme_minimal, labs, theme, element_rect, element_text, element_line, geom_line, scale_shape_manual, scale_x_continuous, element_blank
 from scipy.ndimage import distance_transform_edt
+from scipy.signal import wiener
 
 
 def normalize_list(data):
@@ -19,6 +20,7 @@ def normalize_list(data):
     if total == 0:
         return [0] * len(data)  # 如果总和为0，避免除零错误
     return [x / total for x in data]
+
 
 # scale_2 = False
 scale_2 = True
@@ -28,22 +30,32 @@ ratio_0_7 = False
 ratio_0_7 = True
 # ratio_0_5 = True
 
+image1_gt = tiff.imread(r"./ctdata/fixed/gt_7s.tif")
+image1_gen = tiff.imread(r"D:\SliceGAN\7s_stack_50_scale2_192.tif")
 
-images = tiff.imread(r"D:\neoslicegan\Trained_Generators\best\6_stack_30_scale2_192\6_stack_30_scale2_192.tif")
-# images = tiff.imread(r"D:\SliceGAN\ctdata\fixed\4_stack_15.tif")
-# images = tiff.imread(r"./gt_1.tif")
-phase = np.unique(images)
+# image1_gt = tiff.imread(r"./ctdata/fixed/gt_6.tif")
+# image1_gen = tiff.imread(r"D:\SliceGAN\6_stack_30_scale2_192.tif")
+
+# image1_gt = tiff.imread(r"./ctdata/fixed/gt_7f.tif")
+# image1_gen = tiff.imread(r"./7f_stack_30_scale2_192.tif")
+
+phase = np.unique(image1_gt)
+print(phase)
 # 使用scipy.ndimage.zoom进行插值，将尺寸放大n倍
 # zoom_factors = (5, 5, 5)
 # images = zoom(images, zoom_factors, order=0)
 # print("Interpolated shape:", images.shape)
 
+# eliminate small particles
+eliminate_area = 10  # 1:40, 2:35, 3:10, 5:20, 6:20, 7s:10, 7f:20
+
+"""
 # distance transform
 gen_distance_3d = np.zeros_like(images, dtype=float)
 
 # 对每个2D切片进行距离变换
 for z in range(images.shape[0]):
-    foreground_2d = images[z, :, :]
+    foreground_2d = images[z, :, :].copy()
     foreground_2d[foreground_2d > 1] = 255
     distance_2d = distance_transform_edt(foreground_2d)
     gen_distance_3d[z, :, :] = distance_2d
@@ -53,32 +65,31 @@ print(f"Max Distance: {np.max(gen_distance_3d)}")
 print(f"Min Distance: {np.min(gen_distance_3d)}")
 print(f"Mean Distance: {np.mean(gen_distance_3d)}")
 
-# eliminate small noise pixels
-eliminate_area = 35 # 40, 35, 10, 20, 35, 10
-
 # porosity
-# porosity_127 = []
+porosity_127 = []
 # porosity_255 = []
 
-# for i in range(images.shape[0]):
-#     area_127 = np.sum(images[i, ...] == phase[1])
-#     area_255 = np.sum(images[i, ...] == phase[2])
-#     porosity_127.append(1 - (area_127 / (images[i, ...].shape[0] * images[i, ...].shape[1])))
-#     porosity_255.append(1 - (area_255 / (images[i, ...].shape[0] * images[i, ...].shape[1])))
+for i in range(images.shape[0]):
+    # print(np.unique(images[i, ...]))
+    area_127 = np.sum(images[i, ...] == phase[1])
+    # area_255 = np.sum(images[i, ...] == phase[2])
+    porosity_127.append(1 - (area_127 / (images[i, ...].shape[0] * images[i, ...].shape[1])))
+    # porosity_255.append(1 - (area_255 / (images[i, ...].shape[0] * images[i, ...].shape[1])))
 
-# average_porosity_127 = np.mean(porosity_127)
+average_porosity_127 = np.mean(porosity_127)
 # average_porosity_255 = np.mean(porosity_255)
-# print(f"{average_porosity_127=}")
+print(f"{average_porosity_127=}")
 # print(f"{average_porosity_255=}")
+"""
 
 # equivalent radius
 radii = []
 roundness = []
 aspect_ratio = []
 
-for i in range(images.shape[0]):
+for i in range(image1_gen.shape[0]):
     # step2: label particles
-    labeled_image, num_features = label(images[i], return_num=True)
+    labeled_image, num_features = label(image1_gen[i], return_num=True)
 
     # step3: properties analysis
     properties = regionprops(labeled_image)
@@ -96,7 +107,7 @@ for i in range(images.shape[0]):
         else:
             roundness.append(4 * np.pi * s / perimeter ** 2)
 
-        radius = (s / np.pi) ** (1/2)
+        radius = (s / np.pi) ** (1 / 2)
         radii.append(radius)
 
         # 获取连通区域的轮廓
@@ -130,18 +141,19 @@ if scale_2:
 
 print(f"{len(radii)=}")
 print(f"{len(roundness)=}")
-print(f"{radii=}")
-print(f"{roundness=}")
-percentiles = np.percentile(radii, [10, 50, 90])
-print(f"{percentiles=}")
+# print(f"{radii=}")
+# print(f"{roundness=}")
+percentiles_radii = np.percentile(radii, [10, 50, 90])
+print(f"{percentiles_radii=}")
+
 
 # mean and std
 average_radius = float(np.mean(radii))
 std_dev_radius = float(np.std(radii))
 # print(radii)
-bins = np.arange(0, 150, 2)
+bins = np.arange(0, 84, 1)
 # bins = [0, 10, 50, 90]
-hist, bin_edges = np.histogram(radii, bins=bins)
+hist, bin_edges = np.histogram(radii * 2, bins=bins)
 
 # calculate the average roundness of each particle size in the bins
 roundness_bins = [[] for _ in range(len(hist))]
@@ -168,11 +180,15 @@ print(f"{hist_aspect_ratio=}")
 roundness = [r for r in roundness if r <= 1]
 percentiles_roundness = np.percentile(roundness, [10, 50, 90])
 print(f"{percentiles_roundness=}")
+bins_roundness = np.arange(0, 1.1, 0.05)
+# hist, bin_edges = np.histogram(roundness, bins=bins_roundness)
+
 
 # 打印每个分组的边界和计数
 for i in range(len(hist)):
-    print(f"分组 {i+1}: 边界 = ({bin_edges[i]}, {bin_edges[i+1]}), 计数 = {hist[i]}")
+    print(f"分组 {i + 1}: 边界 = ({bin_edges[i]}, {bin_edges[i + 1]}), 计数 = {hist[i]}")
 
+"""
 # plot
 plt.figure(figsize=(10, 6))
 # plt.hist(radii, bins=list(bins), color='skyblue', edgecolor='black')
@@ -195,7 +211,9 @@ plt.show()
 
 print(f"{average_radius=}")
 print(f"{std_dev_radius=}")
+"""
 
+"""
 # 绘制箱线图
 plt.boxplot(radii, vert=False, patch_artist=True,
             boxprops=dict(facecolor='bisque', color='black'),
@@ -213,16 +231,15 @@ plt.yticks(fontsize=15)
 plt.grid(True)
 
 plt.show()
-
-images_2 = tiff.imread(r"D:\SliceGAN\ctdata\fixed\gt_6.tif")  #<=================================
+"""
 
 # distance transform
-gt_distance_3d = np.zeros_like(images_2, dtype=float)
+gt_distance_3d = np.zeros_like(image1_gt, dtype=float)
 # gt_distance_3d = gt_distance_3d[:, ::2, ::2]
 
 # 对每个2D切片进行距离变换
-for z in range(images_2.shape[0]):
-    foreground_2d = images_2[z, :, :]
+for z in range(image1_gt.shape[0]):
+    foreground_2d = image1_gt[z, :, :]
     foreground_2d[foreground_2d > 1] = 255
     distance_2d = distance_transform_edt(foreground_2d)
     gt_distance_3d[z, :, :] = distance_2d
@@ -237,19 +254,19 @@ radii2 = []
 roundness2 = []
 aspect_ratio2 = []
 
-for i in range(images_2.shape[0]):
+for i in range(image1_gt.shape[0]):
     # step2: label particles
-    labeled_image, num_features = label(images_2[i], return_num=True)
+    labeled_image, num_features = label(image1_gt[i], return_num=True)
 
     # step3: properties analysis
     properties = regionprops(labeled_image)
 
     for prop in properties:
-        if prop.area <= 5:
+        if prop.area <= 10:
             continue
         # equivalent radius
         s = prop.area  # volume
-        radius = (s / np.pi) ** (1/2)
+        radius = (s / np.pi) ** (1 / 2)
         radii2.append(radius)
 
         # equivalent radius roundness
@@ -259,7 +276,6 @@ for i in range(images_2.shape[0]):
             roundness2.append(0)
         else:
             roundness2.append(4 * np.pi * s / perimeter ** 2)
-
 
         # 获取连通区域的轮廓
         coords = prop.coords
@@ -289,37 +305,108 @@ average_radius2 = float(np.mean(radii2))
 std_dev_radius2 = float(np.std(radii2))
 # print(radii)
 # bins = np.arange(0, 150, 5)
-hist2, bin_edges2 = np.histogram(radii2, bins=bins)
+hist2, bin_edges2 = np.histogram(radii2 * 2, bins=bins)
 
-hist = normalize_list(hist)
-hist2 = normalize_list(hist2)
+roundness2 = [r for r in roundness2 if r <= 1]
 
 aspect_ratio_filter2 = []
 for r, a in zip(roundness2, aspect_ratio2):
     if r <= 1:
         aspect_ratio_filter2.append(a)
 
-roundness2 = [r for r in roundness2 if r <= 1]
+# hist2, bin_edges2 = np.histogram(roundness2, bins=bins_roundness)
+
+hist = normalize_list(hist)
+hist2 = normalize_list(hist2)
+
 
 EMD_psd = wasserstein_distance(hist, hist2)
 print(f"{EMD_psd=}")
 print(f"{hist=}")
 
+
+window_size = 5
+window = np.ones(window_size) / window_size
+hist_smooth_Gen = np.convolve(hist, window, mode='same')
+hist_smooth_real = np.convolve(hist2, window, mode='same')
+
+for idx, item in enumerate(hist):
+    if item == 0:
+        hist_smooth_Gen[idx] = 0
+
+for idx, item in enumerate(hist2):
+    if item == 0:
+        hist_smooth_real[idx] = 0
+
+# keep the beginning and the end to be zero
+hist_smooth_Gen[0] = 0
+hist_smooth_Gen[-1] = 0
+hist_smooth_real[0] = 0
+hist_smooth_real[-1] = 0
+
+# hist_smooth = hist
+# hist2_smooth = hist2
+
+hist_smooth_Gen_hat = hist_smooth_Gen
+hist_smooth_real_hat = hist_smooth_real
+
+percentiles_radii2 = np.percentile(radii2, [10, 50, 90])
+print(f"{percentiles_radii2=}")
+percentiles_roundness2 = np.percentile(roundness2, [10, 50, 90])
+print(f"{percentiles_roundness2=}")
+percentiles_aspect_ratio2 = np.percentile(aspect_ratio2, [10, 50, 90])
+print(f"{percentiles_aspect_ratio2=}")
+
+
+# """
 # plot
-plt.figure(figsize=(10, 6))
+plt.figure(figsize=(8, 5))
+
+plt.gca().spines['top'].set_linewidth(2)     # 上边框线宽
+plt.gca().spines['bottom'].set_linewidth(2)  # 下边框线宽
+plt.gca().spines['left'].set_linewidth(2)    # 左边框线宽
+plt.gca().spines['right'].set_linewidth(2)   # 右边框线宽
+
 # plt.hist(radii, bins=list(bins), color='skyblue', edgecolor='black')
-plt.plot(bin_edges[:-1], hist, linestyle='-', marker='o', color='skyblue')
-plt.plot(bin_edges[:-1], hist2, linestyle='-', marker='o', color='peru')
-plt.title('Particle Radius Distribution', fontsize=24)
-plt.xlabel('Radius', fontsize=20)
-plt.ylabel('Frequency', fontsize=20)
-plt.xticks(fontsize=15)
-plt.yticks(fontsize=15)
-plt.legend(['Generated', 'Real'])
-plt.grid(True)
-plt.grid(axis='x')
+# color: #7CCD7C, #43CD80, wheat, peru, skyblue, lightblue
+# plt.plot(bin_edges[:-1], hist_smooth_Gen_hat * 100, linestyle='--', marker=None, color='lightblue', linewidth=3, label='Generated fast scan')
+# plt.plot(bin_edges[:-1], hist_smooth_real_hat * 100, linestyle='-', marker=None, color='skyblue', linewidth=3, label='Real fast scan')
+# plt.plot(bin_edges[:-1], hist_smooth_Gen * 100, linestyle='--', marker=None, color='wheat', linewidth=3, label='Generated slow scan')
+# plt.plot(bin_edges[:-1], hist_smooth_real * 100, linestyle='-', marker=None, color='peru', linewidth=3, label='Real slow scan')
+
+###
+plt.plot(bin_edges[:-1], hist_smooth_Gen_hat * 100, linestyle='--', marker=None, color='#7CCD7C', linewidth=3, label='Generated #1')
+plt.plot(bin_edges[:-1], hist_smooth_real_hat * 100, linestyle='-', marker=None, color='#43CD80', linewidth=3, label='Real #1')
+plt.plot(bin_edges[:-1], hist_smooth_Gen * 100, linestyle='--', marker=None, color='wheat', linewidth=3, label='Generated #2')
+plt.plot(bin_edges[:-1], hist_smooth_real * 100, linestyle='-', marker=None, color='peru', linewidth=3, label='Real #2')
+
+
+# plt.title('Particle Aspect Ratio Distribution', fontsize=22, fontname="Arial")
+# plt.fill_between(bin_edges[:-1], hist_smooth_hat * 100, color='#7CCD7C', alpha=0.6, label='Generated #7 fast')
+# plt.fill_between(bin_edges[:-1], hist_smooth * 100, color='wheat', alpha=0.6, label='Generated #7 slow')
+
+# plt.xlabel('Roundness', fontsize=26, fontname="Arial", fontweight='bold')
+plt.xlabel('Diameter(μm)', fontsize=26, fontname="Arial", fontweight='bold')
+# plt.xlabel('Aspect Ratio', fontsize=26, fontname="Arial", fontweight='bold')
+
+plt.ylabel('Frequency (%)', fontsize=26, fontname="Arial", fontweight='bold')
+plt.xticks(fontsize=26, fontname="Arial", fontweight='bold')
+plt.yticks(fontsize=26, fontname="Arial", fontweight='bold')
+plt.tick_params(axis='both', width=3, length=6)  # width控制粗细，length控制长度
+
+plt.legend(loc='upper right', prop={'size': 20, 'family': 'Arial', 'weight': 'bold'}, frameon=False)
+plt.ylim(0, 15)
+# plt.xscale('log')
+# plt.xticks([1, 10, 100])  # 自定义刻度：0.1, 10, 100
+# plt.xlim(1, 100)
+# plt.grid(True)
+# plt.grid(axis='x')
+plt.savefig("67Particle_psd.png", dpi=600, bbox_inches='tight')
 plt.show()
 
+# """
+
+"""
 print(len(hist), len(hist2))
 
 # Similarity of the two distributions
@@ -349,51 +436,7 @@ EMD_roundess = wasserstein_distance(hist_roundness, hist_roundness2)
 EMD_aspect_ratio = wasserstein_distance(hist_aspect_ratio, hist_aspect_ratio2)
 print(f"{EMD_roundess=}")
 print(f"{EMD_aspect_ratio=}")
-
-# plot
-plt.figure(figsize=(10, 6))
-# plt.hist(radii, bins=list(bins), color='skyblue', edgecolor='black')
-plt.plot(bins_aspect_ratio[:-1], hist_aspect_ratio, color='skyblue')
-plt.plot(bins_aspect_ratio[:-1], hist_aspect_ratio2, color='peru')
-plt.title('Aspect Ratio Distribution', fontsize=24)
-plt.xlabel('Aspect Ratio', fontsize=20)
-plt.ylabel('Frequency', fontsize=20)
-plt.xticks(fontsize=15)
-plt.yticks(fontsize=15)
-plt.legend(['Generated', 'Real'])
-# plt.grid(True)
-# plt.grid(axis='x')
-plt.show()
-
-
 """
-# save to excel
-import openpyxl
-from openpyxl import load_workbook
-from openpyxl.styles import PatternFill
-
-wb = load_workbook("./PSD.xlsx")
-print(wb.sheetnames)
-ws_1 = wb["Aspect"]
-ws_2 = wb["Roundness"]
-ws_3 = wb["Radius"]
-column_initial = 16
-row_initial = 3
-
-for i in range(len(hist_aspect_ratio)):
-    ws_1.cell(row=row_initial, column=column_initial, value=hist_aspect_ratio[i])
-    ws_2.cell(row=row_initial, column=column_initial, value=hist_roundness[i])
-    row_initial += 1
-
-
-row_initial = 3
-for i in range(len(hist)):
-    ws_3.cell(row=row_initial, column=column_initial, value=hist[i])
-    row_initial += 1
-
-wb.save("./PSD.xlsx")
-"""
-
 
 # geom hist plot
 

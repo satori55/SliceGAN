@@ -1,8 +1,9 @@
+from tkinter import font
 import cv2
 from matplotlib.pylab import f
 import matplotlib.pyplot as plt
 import numpy as np
-from sympy import per
+from sympy import li, per
 import tifffile as tiff
 from skimage.measure import label, regionprops
 from scipy.stats import wasserstein_distance
@@ -16,7 +17,7 @@ def normalize_list(data):
         return [0] * len(data)  # 如果总和为0，避免除零错误
     return [x / total for x in data]
 
-
+# gen = True
 gen = False
 
 if gen:
@@ -29,22 +30,25 @@ ratio_0_7 = False
 # ratio_0_7 = True
 
 if gen:
-    image_1 = tiff.imread(r"D:\SliceGAN\1_stack_20_scale2_192_2.tif")
-    image_2 = tiff.imread(r"D:\SliceGAN\2_stack_20_scale2_192_2.tif")
-    image_3 = tiff.imread(r"D:\SliceGAN\3_stack_20_scale2_192_2.tif")
-    # image_4 = tiff.imread(r"D:\SliceGAN\4_stack_15_scale2_192_2.tif")
+    image_1 = tiff.imread(r"./1_stack_20_scale2_192_2.tif")
+    image_2 = tiff.imread(r"./2_stack_20_scale2_192_2.tif")
+    image_3 = tiff.imread(r"./3_stack_20_scale2_192_2.tif")
+    image_4 = tiff.imread(r"./5_stack_20_scale1_192_2.tif")
+    # image_5 = tiff.imread(r"D:\neoslicegan\Trained_Generators\best\7s_stack_20_scale2_192\7s_stack_20_scale2_192.tif")
 else:
     image_1 = tiff.imread(r"./gt_1.tif")
     image_2 = tiff.imread(r"./gt_2.tif")
     image_3 = tiff.imread(r"./gt_3.tif")
-    # image_4 = tiff.imread(r"D:\SliceGAN\ctdata\fixed\4_stack_15.tif")
+    image_4 = tiff.imread(r"./gt_5.tif")
 
 if gen:
     boxplot = []
 else:
     boxplot_2 =[]
 
-for idx, images in enumerate([image_1, image_2, image_3]):
+for idx, images in enumerate([image_1, image_2, image_3, image_4]):
+    if idx == 3:
+        scale_2 = False
     # images = tiff.imread(r"D:\SliceGAN\1_stack_20_scale2_192_2.tif")
     # images = tiff.imread(r"D:\SliceGAN\ctdata\fixed\1_stack_20.tif")
     phase = np.unique(images)
@@ -55,9 +59,9 @@ for idx, images in enumerate([image_1, image_2, image_3]):
 
     # eliminate small particles
     if gen:
-        eliminate_area = [40, 35, 10] # 40, 35, 10, 20
+        eliminate_area = [40, 35, 10, 20] # 40, 35, 10, 20
     else:
-        eliminate_area = [10, 10, 10]
+        eliminate_area = [10] * 4
 
     # porosity
     porosity_127 = []
@@ -89,7 +93,7 @@ for idx, images in enumerate([image_1, image_2, image_3]):
         for prop in properties:
             if prop.area <= eliminate_area[idx]:
                 continue
-            
+
             # equivalent radius roundness
             s = prop.area  # volume
             perimeter = prop.perimeter
@@ -98,30 +102,30 @@ for idx, images in enumerate([image_1, image_2, image_3]):
                 roundness.append(0)
             else:
                 roundness.append(4 * np.pi * s / perimeter ** 2)
-                
+
             radius = (s / np.pi) ** (1/2)
             radii.append(radius)
-            
+
             # 获取连通区域的轮廓
             coords = prop.coords
             contour = coords[:, [1, 0]].astype(np.int32)  # 转换为OpenCV格式
-            
+
             # 获取最小旋转外接矩形
             rect = cv2.minAreaRect(contour)
             box = cv2.boxPoints(rect)
             box = box.astype(np.int32)
-            
+
             # 计算最小旋转外接矩形的宽和高
             width_rot = np.linalg.norm(box[0] - box[1])
             height_rot = np.linalg.norm(box[1] - box[2])
-            
+
             # 计算长宽比
             aspect_ratio_rot = width_rot / height_rot if width_rot < height_rot else height_rot / width_rot
-            
+
             aspect_ratio.append(aspect_ratio_rot)
             # print(f"Aspect Ratio (rotated): {aspect_ratio_rot}")
         # print(f"finish{i}")
-            
+
     # equivalent to 2 times the original data
     if ratio_0_7:
         radii = [r * 0.7 for r in radii]
@@ -155,7 +159,7 @@ for idx, images in enumerate([image_1, image_2, image_3]):
     for i in range(len(roundness_bins)):
         roundness_bins[i] = [r for r in roundness_bins[i] if r <= 1]
         # print(max(roundness_bins[i]))
-        
+
     # calculate the percentiles roundness
     aspect_ratio_filter = []
     for r, a in zip(roundness, aspect_ratio):
@@ -173,25 +177,25 @@ for idx, images in enumerate([image_1, image_2, image_3]):
     for i in range(len(hist)):
         print(f"分组 {i+1}: 边界 = ({bin_edges[i]}, {bin_edges[i+1]}), 计数 = {hist[i]}")
 
-    # plot
-    plt.figure(figsize=(10, 6))
-    # plt.hist(radii, bins=list(bins), color='skyblue', edgecolor='black')
-    plt.plot(bin_edges[:-1], hist, linestyle='-', marker='o', color='skyblue')
-    plt.title('Particle Radius Distribution', fontsize=24)
-    plt.xlabel('Radius', fontsize=20)
-    plt.ylabel('Frequency', fontsize=20)
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    # plt.xlim(0, 15)
-    plt.grid(True)
+    # # plot
+    # plt.figure(figsize=(10, 6))
+    # # plt.hist(radii, bins=list(bins), color='skyblue', edgecolor='black')
+    # plt.plot(bin_edges[:-1], hist, linestyle='-', marker='o', color='skyblue')
+    # plt.title('Particle Radius Distribution', fontsize=24)
+    # plt.xlabel('Radius', fontsize=20)
+    # plt.ylabel('Frequency', fontsize=20)
+    # plt.xticks(fontsize=15)
+    # plt.yticks(fontsize=15)
+    # # plt.xlim(0, 15)
+    # plt.grid(True)
 
-    # mean std
-    plt.axvline(average_radius, color='r', linestyle='dashed', linewidth=1)
-    plt.axvline(average_radius - std_dev_radius, color='g', linestyle='dashed', linewidth=1)
-    plt.axvline(average_radius + std_dev_radius, color='g', linestyle='dashed', linewidth=1)
-    plt.legend(['Mean Radius', 'Std Deviation'])
-    plt.grid(axis='x')
-    plt.show()
+    # # mean std
+    # plt.axvline(average_radius, color='r', linestyle='dashed', linewidth=1)
+    # plt.axvline(average_radius - std_dev_radius, color='g', linestyle='dashed', linewidth=1)
+    # plt.axvline(average_radius + std_dev_radius, color='g', linestyle='dashed', linewidth=1)
+    # plt.legend(['Mean Radius', 'Std Deviation'])
+    # plt.grid(axis='x')
+    # plt.show()
 
     print(f"{average_radius=}")
     print(f"{std_dev_radius=}")
@@ -200,24 +204,25 @@ for idx, images in enumerate([image_1, image_2, image_3]):
         boxplot.append(aspect_ratio_filter)
     else:
         boxplot_2.append(aspect_ratio_filter)
-    
-    # 绘制箱线图
-    plt.boxplot(radii, vert=False, patch_artist=True, 
-                boxprops=dict(facecolor='bisque', color='black'),
-                whiskerprops=dict(color='black'),
-                capprops=dict(color='royalblue'),
-                flierprops=dict(marker='o', markeredgecolor='deepskyblue', markersize=4),
-                medianprops=dict(color='lightcoral'),
-                showfliers=False)
 
-    plt.title('Particle Radius Distribution of Samples', fontsize=24)
-    plt.xlabel('Radius', fontsize=20)
-    plt.ylabel('Sample', fontsize=20)
-    plt.xticks(fontsize=15)
-    plt.yticks(fontsize=15)
-    plt.grid(True)
 
-    plt.show()
+    # # 绘制箱线图
+    # plt.boxplot(radii, vert=False, patch_artist=True,
+    #             boxprops=dict(facecolor='bisque', color='black'),
+    #             whiskerprops=dict(color='black'),
+    #             capprops=dict(color='royalblue'),
+    #             flierprops=dict(marker='o', markeredgecolor='deepskyblue', markersize=4),
+    #             medianprops=dict(color='lightcoral'),
+    #             showfliers=False)
+
+    # plt.title('Particle Radius Distribution of Samples', fontsize=24)
+    # plt.xlabel('Radius', fontsize=20)
+    # plt.ylabel('Sample', fontsize=20)
+    # plt.xticks(fontsize=15)
+    # plt.yticks(fontsize=15)
+    # plt.grid(True)
+
+    # plt.show()
 
     images_2 = tiff.imread(r"D:\SliceGAN\ctdata\fixed\1_stack_20.tif")
 
@@ -238,7 +243,7 @@ for idx, images in enumerate([image_1, image_2, image_3]):
             s = prop.area  # volume
             radius = (s / np.pi) ** (1/2)
             radii2.append(radius)
-            
+
     if ratio_0_7:
         radii2 = [r * 0.7 for r in radii2]
     # mean and std
@@ -254,45 +259,67 @@ for idx, images in enumerate([image_1, image_2, image_3]):
     print(f"{EMD=}")
     print(f"{hist=}")
     ratio_0_7 = True
-    
-    
+
+
+from matplotlib.ticker import FormatStrFormatter
 
 new = []
 for i, j in zip(boxplot, boxplot_2):
     new.append(i)
     new.append(j)
 
-positions = [1, 2, 3.5, 4.5, 6, 7]
-fig, ax = plt.subplots(figsize=(10, 7))
+positions = [1, 2, 3.5, 4.5, 6, 7, 8.5, 9.5]
+fig, ax = plt.subplots(figsize=(6, 5))
 bp = ax.boxplot(new, positions = positions,
             vert=False,
-            patch_artist=True, 
-            boxprops=dict(color='black'),
-            whiskerprops=dict(color='black'),
-            capprops=dict(color='royalblue'),
+            patch_artist=True,
+            boxprops=dict(color='black', linewidth=2),
+            whiskerprops=dict(color='black', linewidth=2),
+            capprops=dict(color='royalblue', linewidth=2),
             flierprops=dict(marker='o', markeredgecolor='deepskyblue', markersize=4),
-            medianprops=dict(color='lightcoral'),
+            medianprops=dict(color='lightcoral', linewidth=2),
             showfliers=False)
 
 # 设置每个箱体的颜色
-colors = ['lightblue', 'bisque', 'lightblue', 'bisque', 'lightblue', 'bisque']
+colors = ['lightblue', 'bisque', 'lightblue', 'bisque', 'lightblue', 'bisque', 'lightblue', 'bisque']
 for patch, color in zip(bp['boxes'], colors):
     patch.set_facecolor(color)
-    
-ax.set_yticks([1.5, 4, 6.5])
-ax.set_yticklabels(['1', '2', '3'])
 
-ax.set_title('Aspect Ratio Distribution of Samples', fontsize=22, fontname='Arial')
-ax.set_xlabel('Aspect Ratio', fontsize=22, fontname='Arial')
-ax.set_ylabel('Sample', fontsize=22, fontname='Arial')
-ax.tick_params(axis='x', labelsize=22)
-ax.tick_params(axis='y', labelsize=22)
-ax.grid(axis='x')
+ax.set_yticks([1.5, 4, 6.5, 9])  # 设置刻度位置
+ax.set_yticklabels(['4', '5', '6', '7'])  # 设置刻度标签
+
+# ax.set_title('Aspect Ratio Distribution of Samples', fontsize=22, fontname='Arial')
+ax.set_xlabel('Aspect Ratio', fontsize=26, fontname='Arial', weight='bold')
+# ax.set_xlabel('Diameter(μm)', fontsize=26, fontname='Arial', weight='bold')
+# plt.xlabel('Roundness', fontsize=26, fontname="Arial", fontweight='bold')
+
+ax.set_ylabel('Sample', fontsize=26, fontname='Arial', weight='bold')
+ax.tick_params(axis='both', width=3, length=6)
+# 设置 x 轴刻度标签样式
+ax.set_xticklabels(ax.get_xticks(), fontsize=26, fontname="Arial", fontweight='bold')
+
+# 设置 y 轴刻度标签样式
+ax.set_yticklabels(ax.get_yticks(), fontsize=26, fontname="Arial", fontweight='bold')
+
+ax.xaxis.set_major_formatter(FormatStrFormatter('%.1f'))
+
+# 设置x轴刻度范围
+ax.set_xlim(0, 1.1)
+
+# no grid
+ax.grid(False)
+
+plt.gca().spines['top'].set_linewidth(3)     # 上边框线宽
+plt.gca().spines['bottom'].set_linewidth(3)  # 下边框线宽
+plt.gca().spines['left'].set_linewidth(3)    # 左边框线宽
+plt.gca().spines['right'].set_linewidth(3)   # 右边框线宽
 
 legend_patches = [mpatches.Patch(color='bisque', label='Real Data'),
                   mpatches.Patch(color='lightblue', label='Generated Data')]
 
-ax.legend(handles=legend_patches, loc='upper right', fontsize=14, bbox_to_anchor=(1.31, 1))
+# ax.legend(loc='upper right', prop={'size': 20, 'family': 'Arial', 'weight': 'bold'}, frameon=False)
 
-plt.savefig('Aspect_ratio.png', dpi=600, bbox_inches='tight')
+# ax.legend(handles=legend_patches, loc='upper right', prop={'size': 20, 'family': 'Arial', 'weight': 'bold'}, frameon=False)
+
+plt.savefig('aspect.png', dpi=600, bbox_inches='tight')
 plt.show()
